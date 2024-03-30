@@ -177,6 +177,7 @@ static unsigned char seed;						/** randomness control **/
 static unsigned char roosters_count;            /** cocks counter **/
 static unsigned char roosters_total;            /** total of cocks arrive **/
 static struct npc_ia_s npcs[MAX_ENIMIES];
+static unsigned char holding;                   /** hold to restart battle **/
 
 /** micromages 4 players **/
 static unsigned char joysticks = 1;				/** local multiplayer mode **/
@@ -770,6 +771,7 @@ void screen_celebration()
     put_rank();
     vram_adr(NTADR_A(31 - (joysticks * 4), 28));
     put_score();  
+    put_str(NTADR_A(1, 22), I18N_EN_RESTART_BTN);
 
     /** print rank */
     for (l = 0x7f, i = 0; i < joysticks; ++i)
@@ -851,6 +853,7 @@ void game_loop(void)
             case FSM_DRAW_CELEBRATION:
 				screen_celebration();
                 gamestate = FSM_CELEBRATION;
+                holding = 0;
                 break;
 
             case FSM_COUNT:
@@ -915,12 +918,23 @@ void game_loop(void)
 
             case FSM_CELEBRATION:
                 seed = (seed + 1) % sizeof(good_seeds);
+                /** restart game (by start button) **/
                 if (gamepad_old[PLAYER_1] == 0) {
-                    /** restart game **/
                     if ((gamepad[PLAYER_1] & PAD_START)) {
                         gamestate = FSM_RESTART;
                     }
                 }
+                /** restart game (by attack button) **/
+                if (holding > 60) {
+                    gamestate = FSM_RESTART;
+                }
+                if (holding == 0 && (gamepad_old[PLAYER_1] & PAD_A) == 0 && gamepad[PLAYER_1] & PAD_A) {
+                    holding = 1;
+                }
+                if (holding && gamepad[PLAYER_1] & PAD_A) {
+                    ++holding;
+                }
+                /** animate **/
                 s = 0;
                 i = winner_id;
                 ++framecount.frames;
